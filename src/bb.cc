@@ -9,7 +9,7 @@ BB::print(FILE* out) {
           invalid ? "i" : "-", privileged ? "p" : "-", addrtaken ? "a" : "-",
           padding ? "n" : "-");
   if (invalid) {
-    fprintf(out, "  0x%016jx  (bad)", start);
+    fprintf(out, "  0x%016jx  (bad)\n", start);
   } else {
     for (auto& ins : insns) {
       ins.print(out);
