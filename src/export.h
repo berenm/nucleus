@@ -15,6 +15,9 @@ int
 export_bin2binja(std::string& fname, Binary* bin,
                  std::list<DisasmSection>* disasm, CFG* cfg);
 int
+export_bin2r2(std::string& fname, Binary* bin, std::list<DisasmSection>* disasm,
+              CFG* cfg);
+int
 export_cfg2dot(std::string& fname, CFG* cfg);
 
 #endif /* NUCLEUS_EXPORT_H */
