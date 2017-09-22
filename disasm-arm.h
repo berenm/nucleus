@@ -3,6 +3,7 @@
 
 #include "disasm.h"
 
-int nucleus_disasm_bb_arm(Binary *bin, DisasmSection *dis, BB *bb);
+int
+nucleus_disasm_bb_arm(Binary* bin, DisasmSection* dis, BB* bb);
 
 #endif /* NUCLEUS_DISASM_ARM_H */

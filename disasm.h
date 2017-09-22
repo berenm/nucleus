@@ -26,17 +26,17 @@ public:
 
   AddressMap() {}
 
-  void     insert        (uint64_t addr);
-  bool     contains      (uint64_t addr);
-  unsigned get_addr_type (uint64_t addr);
-  void     set_addr_type (uint64_t addr, unsigned type);
-  void     add_addr_flag (uint64_t addr, unsigned flag);
-  unsigned addr_type     (uint64_t addr);
+  void     insert(uint64_t addr);
+  bool     contains(uint64_t addr);
+  unsigned get_addr_type(uint64_t addr);
+  void     set_addr_type(uint64_t addr, unsigned type);
+  void     add_addr_flag(uint64_t addr, unsigned flag);
+  unsigned addr_type(uint64_t addr);
 
-  size_t   unmapped_count ();
-  uint64_t get_unmapped   (size_t i);
-  void     erase          (uint64_t addr);
-  void     erase_unmapped (uint64_t addr);
+  size_t   unmapped_count();
+  uint64_t get_unmapped(size_t i);
+  void     erase(uint64_t addr);
+  void     erase_unmapped(uint64_t addr);
 
 private:
   std::map<uint64_t, unsigned> addrmap;
@@ -48,9 +48,9 @@ class DisasmSection {
 public:
   DisasmSection() : section(NULL) {}
 
-  void print_BBs(FILE *out);
+  void print_BBs(FILE* out);
 
-  Section              *section;
+  Section*              section;
   AddressMap            addrmap;
   std::list<BB>         BBs;
   std::list<DataRegion> data;
@@ -59,7 +59,7 @@ private:
   void sort_BBs();
 };
 
-int nucleus_disasm (Binary *bin, std::list<DisasmSection> *disasm);
+int
+nucleus_disasm(Binary* bin, std::list<DisasmSection>* disasm);
 
 #endif /* NUCLEUS_DISASM_H */
-

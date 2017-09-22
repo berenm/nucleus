@@ -11,10 +11,7 @@ class Symbol;
 
 class Symbol {
 public:
-  enum SymbolType {
-    SYM_TYPE_UKN  = 0x000,
-    SYM_TYPE_FUNC = 0x001
-  };
+  enum SymbolType { SYM_TYPE_UKN = 0x000, SYM_TYPE_FUNC = 0x001 };
 
   Symbol() : type(SYM_TYPE_UKN), name(), addr(0) {}
 
@@ -25,23 +22,19 @@ public:
 
 class Section {
 public:
-  enum SectionType {
-    SEC_TYPE_NONE = 0,
-    SEC_TYPE_CODE = 1,
-    SEC_TYPE_DATA = 2
-  };
+  enum SectionType { SEC_TYPE_NONE = 0, SEC_TYPE_CODE = 1, SEC_TYPE_DATA = 2 };
 
   Section() : binary(NULL), type(0), vma(0), size(0), bytes(NULL) {}
 
-  bool contains        (uint64_t addr) { return (addr >= vma) && (addr-vma < size); }
-  bool is_import_table ()              { return name == ".plt"; }
+  bool contains(uint64_t addr) { return (addr >= vma) && (addr - vma < size); }
+  bool is_import_table() { return name == ".plt"; }
 
-  Binary       *binary;
-  std::string   name;
-  unsigned      type;
-  uint64_t      vma;
-  uint64_t      size;
-  uint8_t       *bytes;
+  Binary*     binary;
+  std::string name;
+  unsigned    type;
+  uint64_t    vma;
+  uint64_t    size;
+  uint8_t*    bytes;
 };
 
 class Binary {
@@ -74,8 +67,9 @@ public:
   std::vector<Symbol>  symbols;
 };
 
-int  load_binary   (std::string &fname, Binary *bin, Binary::BinaryType type);
-void unload_binary (Binary *bin);
+int
+load_binary(std::string& fname, Binary* bin, Binary::BinaryType type);
+void
+unload_binary(Binary* bin);
 
 #endif /* NUCLEUS_LOADER_H */
-

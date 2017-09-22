@@ -38,14 +38,14 @@ struct options {
 
   struct {
     std::string name;
-    double   (*score_function)  (DisasmSection*, BB*);
-    unsigned (*mutate_function) (DisasmSection*, BB*, BB**);
-    int      (*select_function) (DisasmSection*, BB*, unsigned);
+    double (*score_function)(DisasmSection*, BB*);
+    unsigned (*mutate_function)(DisasmSection*, BB*, BB**);
+    int (*select_function)(DisasmSection*, BB*, unsigned);
   } strategy_function;
 };
 extern struct options options;
 
-int parse_options (int argc, char *argv[]);
+int
+parse_options(int argc, char* argv[]);
 
 #endif /* NUCLEUS_OPTIONS_H */
-

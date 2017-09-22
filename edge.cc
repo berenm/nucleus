@@ -2,13 +2,11 @@
 
 #include "edge.h"
 
-
 std::string
-Edge::type2str()
-{
+Edge::type2str() {
   std::string s;
 
-  switch(this->type) {
+  switch (this->type) {
   case EDGE_TYPE_JMP:
     s = "jmp";
     break;
@@ -32,13 +30,12 @@ Edge::type2str()
     break;
   }
 
-  if(this->is_switch) {
+  if (this->is_switch) {
     s += "/switch";
   }
-  if(this->offset) {
+  if (this->offset) {
     s += "/+" + std::to_string(this->offset);
   }
 
   return s;
 }
-
