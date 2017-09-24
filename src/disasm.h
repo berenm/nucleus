@@ -48,6 +48,8 @@ public:
 private:
   std::map<uint64_t, unsigned> regions;
   std::map<uint64_t, unsigned> flags;
+
+  friend bool test(AddressMap);
 };
 
 class DisasmSection {
