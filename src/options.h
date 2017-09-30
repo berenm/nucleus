@@ -27,6 +27,7 @@ struct options {
     std::string binja;
     std::string r2;
     std::string dot;
+    uint64_t    address;
   } exports;
 
   struct {

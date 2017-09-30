@@ -55,6 +55,8 @@ print_usage(char* prog) {
   printf("     : export binary info to Binary Ninja script\n");
   printf("  -r <file>\n");
   printf("     : export binary info to Radare2 script\n");
+  printf("  -x <address>\n");
+  printf("     : only export function starting at <address>\n");
   printf("  -v : verbose\n");
   printf("  -w : disable warnings\n");
   printf("  -h : help\n");
@@ -67,7 +69,7 @@ print_usage(char* prog) {
 int
 parse_options(int argc, char* argv[]) {
   int                i, opt;
-  char               optstr[] = "vwhd:t:a:fb:Dpg:i:n:r:e:";
+  char               optstr[] = "vwhd:t:a:fb:Dpg:i:n:r:e:x:";
   extern const char* binary_types_descr[][2];
   extern const char* binary_arch_descr[][2];
   std::string        s;
@@ -174,6 +176,14 @@ parse_options(int argc, char* argv[]) {
 
     case 'r':
       options.exports.r2 = std::string(optarg);
+      break;
+
+    case 'x':
+      options.exports.address = strtoul(optarg, NULL, 0);
+      if (!options.exports.address) {
+        printf("ERROR: Invalid export address %s\n", optarg);
+        return -1;
+      }
       break;
 
     case 'd':

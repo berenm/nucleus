@@ -58,7 +58,14 @@ main(int argc, char* argv[]) {
     return 1;
   }
 
-  if (options.summarize_functions) {
+  if (options.exports.address != 0) {
+    auto bb = cfg.start2bb[options.exports.address];
+    cfg.start2bb.clear();
+    for (auto& b : bb->function->BBs) {
+      cfg.start2bb[b->start] = b;
+      b->print(stdout);
+    }
+  } else if (options.summarize_functions) {
     cfg.print_function_summaries(stdout);
   } else {
     fprintf(stdout, "\n");
