@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include <endian.h>
 
 #include <list>
 #include <map>
@@ -14,7 +15,6 @@
 #include "cfg.h"
 #include "log.h"
 #include "options.h"
-#include "endian.h"
 
 void
 CFG::print_functions(FILE* out) {
@@ -265,13 +265,13 @@ CFG::find_switches_aarch64() {
               case_addr_abs = uint8_t(*jmptab8++);
               break;
             case 2:
-              case_addr_abs = uint16_t(read_le_i16(jmptab16++));
+              case_addr_abs = uint16_t(le16toh(*jmptab16++));
               break;
             case 4:
-              case_addr_abs = uint32_t(read_le_i32(jmptab32++));
+              case_addr_abs = uint32_t(le32toh(*jmptab32++));
               break;
             case 8:
-              case_addr_abs = uint64_t(read_le_i64(jmptab64++));
+              case_addr_abs = uint64_t(le64toh(*jmptab64++));
               break;
             default:
               print_warn("Unexpected scale factor in memory operand: %d",
@@ -391,7 +391,7 @@ CFG::find_switches_arm() {
               break;
             jmptab_end += scale;
             jmptab_idx += scale;
-            case_addr = uint32_t(read_le_i32(jmptab++));
+            case_addr = uint32_t(le32toh(*jmptab++));
             if (!case_addr)
               break;
             if (!target_sec->contains(case_addr)) {
@@ -562,10 +562,10 @@ CFG::find_switches_mips() {
             jmptab_idx += scale;
             switch (scale) {
             case 4:
-              case_addr = uint32_t(read_be_i32(jmptab32++));
+              case_addr = uint32_t(be32toh(*jmptab32++));
               break;
             case 8:
-              case_addr = uint64_t(read_be_i64(jmptab64++));
+              case_addr = uint64_t(be64toh(*jmptab64++));
               break;
             default:
               print_warn("Unexpected scale factor in memory operand: %d",
@@ -695,10 +695,10 @@ CFG::find_switches_ppc() {
             jmptab_idx += scale;
             switch (scale) {
             case 4:
-              case_addr = uint32_t(read_be_i32(jmptab32++) + jmptab_addr);
+              case_addr = uint32_t(be32toh(*jmptab32++) + jmptab_addr);
               break;
             case 8:
-              case_addr = uint64_t(read_be_i64(jmptab64++) + jmptab_addr);
+              case_addr = uint64_t(be64toh(*jmptab64++) + jmptab_addr);
               break;
             default:
               print_warn("Unexpected scale factor in memory operand: %d",
