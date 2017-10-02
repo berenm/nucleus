@@ -303,7 +303,17 @@ nucleus_disasm_bb_x86(Binary* bin, DisasmSection* dis, BB* bb) {
     }
 
     if (cflow) {
+      dis->addrmap.add_address_flag(insn.target,
+                                    AddressMap::ADDRESS_FLAG_START_BB);
+      if (call)
+        dis->addrmap.add_address_flag(insn.target,
+                                      AddressMap::ADDRESS_FLAG_START_FN);
       /* end of basic block */
+      break;
+    }
+
+    if (dis->addrmap.get_address_flag(pc_addr) &
+        AddressMap::ADDRESS_FLAG_START_BB) {
       break;
     }
   }

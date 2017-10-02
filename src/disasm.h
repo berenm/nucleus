@@ -21,6 +21,10 @@ public:
     DISASM_REGION_CODE     = 0x0002,
     DISASM_REGION_BB       = 0x0100,
     DISASM_REGION_FUNC     = 0x0200,
+
+    ADDRESS_FLAG_NONE     = 0x0000,
+    ADDRESS_FLAG_START_BB = 0x0100,
+    ADDRESS_FLAG_START_FN = 0x0200,
   };
 
   AddressMap() { regions[0] = DISASM_REGION_UNMAPPED; }
@@ -32,8 +36,18 @@ public:
   void     add_region_type(uint64_t addr, uint64_t size, unsigned type);
   void     clr_region_type(uint64_t addr, uint64_t size, unsigned type);
 
+  unsigned get_address_flag(uint64_t addr) {
+    auto it = flags.find(addr);
+    if (it != flags.end())
+      return it->second;
+    return ADDRESS_FLAG_NONE;
+  }
+  void add_address_flag(uint64_t addr, unsigned flag) { flags[addr] |= flag; }
+  void clr_address_flag(uint64_t addr, unsigned flag) { flags[addr] &= ~flag; }
+
 private:
   std::map<uint64_t, unsigned> regions;
+  std::map<uint64_t, unsigned> flags;
 };
 
 class DisasmSection {
