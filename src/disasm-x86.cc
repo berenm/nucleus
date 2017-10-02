@@ -274,9 +274,8 @@ nucleus_disasm_bb_x86(Binary* bin, DisasmSection* dis, BB* bb) {
     for (j = 0; j < insn.detail.x86.op_count; j++) {
       cs_op = &insn.detail.x86.operands[j];
       if ((cs_op->type == X86_OP_IMM) &&
-          ((insn.flags & Instruction::INS_FLAG_CFLOW != 0) ||
-           ((cs_op->imm >= dis->section->vma) &&
-            (cs_op->imm < dis->section->vma + dis->section->size)))) {
+          (cflow || ((cs_op->imm >= dis->section->vma) &&
+                     (cs_op->imm < dis->section->vma + dis->section->size)))) {
         insn.target = cs_op->imm;
         insn.flags |= Instruction::INS_FLAG_DATA;
       } else if ((cs_op->type == X86_OP_MEM) &&
