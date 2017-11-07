@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <capstone/capstone.h>
+
 class Binary;
 class Section;
 class Symbol;
@@ -65,6 +67,7 @@ public:
   uint64_t             entry;
   std::vector<Section> sections;
   std::vector<Symbol>  symbols;
+  csh                  cs_dis;
 };
 
 int

@@ -168,33 +168,13 @@ is_cs_privileged_ins(cs_insn* ins) {
 
 int
 nucleus_disasm_bb_arm(Binary* bin, DisasmSection* dis, BB* bb) {
-  int init, ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap,
+  int ret, jmp, indir, cflow, cond, call, nop, only_nop, priv, trap,
       ndisassembled;
-  csh            cs_dis;
-  cs_mode        cs_mode_flags;
   cs_arm_op*     cs_op;
   const uint8_t* pc;
   uint64_t       pc_addr, offset;
   size_t         i, j, n;
   Instruction    insn;
-
-  init = 0;
-  switch (bin->bits) {
-  case 32:
-    cs_mode_flags = (cs_mode)(CS_MODE_ARM);
-    break;
-  default:
-    print_err("unsupported bit width %u for architecture %s", bin->bits,
-              bin->arch_str.c_str());
-    goto fail;
-  }
-
-  if (cs_open(CS_ARCH_ARM, cs_mode_flags, &cs_dis) != CS_ERR_OK) {
-    print_err("failed to initialize libcapstone");
-    goto fail;
-  }
-  init = 1;
-  cs_option(cs_dis, CS_OPT_DETAIL, CS_OPT_ON);
 
   offset = bb->start - dis->section->vma;
   if ((bb->start < dis->section->vma) || (offset >= dis->section->size)) {
@@ -210,7 +190,7 @@ nucleus_disasm_bb_arm(Binary* bin, DisasmSection* dis, BB* bb) {
   bb->section   = dis->section;
   ndisassembled = 0;
   only_nop      = 0;
-  while (cs_disasm_iter(cs_dis, &pc, &n, &pc_addr, &insn)) {
+  while (cs_disasm_iter(bin->cs_dis, &pc, &n, &pc_addr, &insn)) {
     if (insn.id == ARM_INS_INVALID) {
       bb->invalid = 1;
       bb->end += 1;
@@ -303,8 +283,5 @@ fail:
   ret = -1;
 
 cleanup:
-  if (init) {
-    cs_close(&cs_dis);
-  }
   return ret;
 }

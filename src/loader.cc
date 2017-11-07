@@ -539,10 +539,68 @@ cleanup:
 int
 load_binary(std::string& fname, Binary* bin, Binary::BinaryType type) {
   if (type == Binary::BIN_TYPE_RAW) {
-    return load_binary_raw(fname, bin, type);
+    if (load_binary_raw(fname, bin, type) < 0) {
+      goto fail;
+    }
   } else {
-    return load_binary_bfd(fname, bin, type);
+    if (load_binary_bfd(fname, bin, type) < 0) {
+      goto fail;
+    }
   }
+
+  cs_mode mode;
+  switch (bin->bits) {
+  case 64:
+    mode = CS_MODE_64;
+    break;
+  case 32:
+    mode = CS_MODE_32;
+    break;
+  case 16:
+    mode = CS_MODE_16;
+    break;
+  default:
+    print_err("unsupported bit width %u for architecture %s", bin->bits,
+              bin->arch_str.c_str());
+    goto fail;
+  }
+
+  cs_arch arch;
+  switch (bin->arch) {
+  case Binary::ARCH_AARCH64:
+    arch = CS_ARCH_ARM64;
+    break;
+  case Binary::ARCH_ARM:
+    arch = CS_ARCH_ARM;
+    break;
+  case Binary::ARCH_MIPS:
+    arch = CS_ARCH_MIPS;
+    mode = static_cast<cs_mode>(mode | CS_MODE_BIG_ENDIAN);
+    break;
+  case Binary::ARCH_PPC:
+    arch = CS_ARCH_PPC;
+    mode = static_cast<cs_mode>(mode | CS_MODE_BIG_ENDIAN);
+    break;
+  case Binary::ARCH_X86:
+    arch = CS_ARCH_X86;
+    break;
+  default:
+    print_err("disassembly for architecture %s is not supported",
+              bin->arch_str.c_str());
+    goto fail;
+  }
+
+  if (cs_open(arch, mode, &bin->cs_dis) != CS_ERR_OK) {
+    print_err("failed to initialize libcapstone");
+    goto fail;
+  }
+  cs_option(bin->cs_dis, CS_OPT_DETAIL, CS_OPT_ON);
+  cs_option(bin->cs_dis, CS_OPT_SYNTAX, CS_OPT_SYNTAX_INTEL);
+
+  return 0;
+
+fail:
+  return -1;
 }
 
 void
@@ -556,4 +614,6 @@ unload_binary(Binary* bin) {
       free(sec->bytes);
     }
   }
+
+  cs_close(&bin->cs_dis);
 }
