@@ -26,8 +26,8 @@ public:
       reg       = ARM64_REG_INVALID;
       imm       = 0;
       fp        = 0;
-      mem.base  = 0;
-      mem.index = 0;
+      mem.base  = ARM64_REG_INVALID;
+      mem.index = ARM64_REG_INVALID;
       mem.disp  = 0;
     }
     AArch64Value(const AArch64Value& v) {
@@ -47,8 +47,8 @@ public:
       reg       = ARM_REG_INVALID;
       imm       = 0;
       fp        = 0;
-      mem.base  = 0;
-      mem.index = 0;
+      mem.base  = ARM_REG_INVALID;
+      mem.index = ARM_REG_INVALID;
       mem.scale = 0;
       mem.disp  = 0;
     }
@@ -70,7 +70,7 @@ public:
       reg      = MIPS_REG_INVALID;
       imm      = 0;
       fp       = 0;
-      mem.base = 0;
+      mem.base = MIPS_REG_INVALID;
       mem.disp = 0;
     }
     MIPSValue(const MIPSValue& v) {
@@ -88,7 +88,7 @@ public:
     PPCValue() {
       reg      = PPC_REG_INVALID;
       imm      = 0;
-      mem.base = 0;
+      mem.base = PPC_REG_INVALID;
       mem.disp = 0;
     }
     PPCValue(const PPCValue& v) {
@@ -106,9 +106,9 @@ public:
       reg         = X86_REG_INVALID;
       imm         = 0;
       fp          = 0;
-      mem.segment = 0;
-      mem.base    = 0;
-      mem.index   = 0;
+      mem.segment = X86_REG_INVALID;
+      mem.base    = X86_REG_INVALID;
+      mem.index   = X86_REG_INVALID;
       mem.scale   = 0;
       mem.disp    = 0;
     }
