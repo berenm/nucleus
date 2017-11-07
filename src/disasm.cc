@@ -225,7 +225,7 @@ nucleus_disasm_section(Binary* bin, DisasmSection* dis) {
         dis->addrmap.add_addr_flag(mutants[i].start,
                                    AddressMap::DISASM_REGION_BB_START);
         for (auto& ins : mutants[i].insns) {
-          dis->addrmap.add_addr_flag(ins.start,
+          dis->addrmap.add_addr_flag(ins.address,
                                      AddressMap::DISASM_REGION_INS_START);
         }
         for (vma = mutants[i].start; vma < mutants[i].end; vma++) {

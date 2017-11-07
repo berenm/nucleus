@@ -5,7 +5,7 @@
 
 void
 Instruction::print(FILE* out) {
-  fprintf(out, "  0x%016jx  %s\t%s\n", start, mnem.c_str(), op_str.c_str());
+  fprintf(out, "  0x%016jx  %s\t%s\n", address, mnemonic, op_str);
 }
 
 Edge::EdgeType

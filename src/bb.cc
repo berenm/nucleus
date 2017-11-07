@@ -18,7 +18,7 @@ BB::print(FILE* out) {
   if (!ancestors.empty()) {
     fprintf(out, "--A ancestors:\n");
     for (auto& e : ancestors) {
-      fprintf(out, "--A 0x%016jx (%s)\n", e.src->insns.back().start,
+      fprintf(out, "--A 0x%016jx (%s)\n", e.src->insns.back().address,
               e.type2str().c_str());
     }
   }

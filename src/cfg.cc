@@ -56,7 +56,8 @@ CFG::analyze_addrtaken_ppc() {
   for (auto& kv : this->start2bb) {
     bb = kv.second;
     for (auto& ins : bb->insns) {
-      if (ins.operands.size() < 2) {
+      auto const det = ins.detail.ppc;
+      if (det.op_count < 2) {
         continue;
       }
       /* Pattern #1 (32-bit)
@@ -69,21 +70,21 @@ CFG::analyze_addrtaken_ppc() {
        *     lis    rN, .L@ha
        *     ori    rN, rN, .L@l */
       if (ins.id == PPC_INS_LIS) {
-        int64_t dst = ins.operands[0].ppc_value.reg - PPC_REG_R0;
-        int64_t imm = ins.operands[1].ppc_value.imm;
+        int64_t dst = det.operands[0].reg - PPC_REG_R0;
+        int64_t imm = det.operands[1].imm;
         assert(dst < 32);
         registers[dst] = imm << 16;
       } else if (ins.id == PPC_INS_ADDI || ins.id == PPC_INS_ORI) {
-        int64_t lhs = ins.operands[1].ppc_value.reg - PPC_REG_R0;
-        int64_t rhs = ins.operands[2].ppc_value.imm;
+        int64_t lhs = det.operands[1].reg - PPC_REG_R0;
+        int64_t rhs = det.operands[2].imm;
         assert(lhs < 32);
         if (registers[lhs] != -1) {
           mark_addrtaken(registers[lhs] | rhs);
         }
-      } else if (ins.operands[0].type == Operand::OP_TYPE_REG &&
-                 ins.operands[0].ppc_value.reg >= PPC_REG_R0 &&
-                 ins.operands[0].ppc_value.reg <= PPC_REG_R31) {
-        int64_t dst    = ins.operands[0].ppc_value.reg - PPC_REG_R0;
+      } else if (det.operands[0].type == PPC_OP_REG &&
+                 det.operands[0].reg >= PPC_REG_R0 &&
+                 det.operands[0].reg <= PPC_REG_R31) {
+        int64_t dst    = det.operands[0].reg - PPC_REG_R0;
         registers[dst] = -1;
       }
     }
@@ -92,21 +93,21 @@ CFG::analyze_addrtaken_ppc() {
 
 void
 CFG::analyze_addrtaken_x86() {
-  BB*      bb;
-  Operand *op_src, *op_dst;
+  BB*              bb;
+  cs_x86_op const *op_src, *op_dst;
 
   for (auto& kv : this->start2bb) {
     bb = kv.second;
     for (auto& ins : bb->insns) {
-      if (ins.operands.size() < 2) {
+      auto const det = ins.detail.x86;
+      if (det.op_count < 2) {
         continue;
       }
-      op_dst = &ins.operands[0];
-      op_src = &ins.operands[1];
-      if (((op_dst->type == Operand::OP_TYPE_REG) ||
-           (op_dst->type == Operand::OP_TYPE_MEM)) &&
-          (op_src->type == Operand::OP_TYPE_IMM)) {
-        mark_addrtaken(op_src->x86_value.imm);
+      op_dst = &det.operands[0];
+      op_src = &det.operands[1];
+      if (((op_dst->type == X86_OP_REG) || (op_dst->type == X86_OP_MEM)) &&
+          (op_src->type == X86_OP_IMM)) {
+        mark_addrtaken(op_src->imm);
       }
     }
   }
@@ -190,7 +191,8 @@ CFG::find_switches_aarch64() {
     if (bb->insns.back().edge_type() == Edge::EDGE_TYPE_JMP_INDIRECT) {
       target_sec = bb->section;
       for (auto& ins : bb->insns) {
-        if (ins.operands.size() < 2) {
+        auto const det = ins.detail.arm64;
+        if (det.op_count < 2) {
           continue;
         }
         /* Pattern #1
@@ -207,37 +209,37 @@ CFG::find_switches_aarch64() {
           } else if (ins.id == ARM64_INS_LDRH) {
             scale = 2;
           } else if (ins.id == ARM64_INS_LDR &&
-                     ins.operands[0].aarch64_value.reg >= ARM64_REG_W0 &&
-                     ins.operands[0].aarch64_value.reg <= ARM64_REG_W28) {
+                     det.operands[0].reg >= ARM64_REG_W0 &&
+                     det.operands[0].reg <= ARM64_REG_W28) {
             scale = 4;
           } else if (ins.id == ARM64_INS_LDR &&
-                     ins.operands[0].aarch64_value.reg >= ARM64_REG_X0 &&
-                     ins.operands[0].aarch64_value.reg <= ARM64_REG_X28) {
+                     det.operands[0].reg >= ARM64_REG_X0 &&
+                     det.operands[0].reg <= ARM64_REG_X28) {
             scale = 8;
           }
         }
         /* detect jump-table address loading */
         if (ins.id == ARM64_INS_ADRP) {
-          int64_t dst = ins.operands[0].aarch64_value.reg - ARM64_REG_X0;
-          int64_t imm = ins.operands[1].aarch64_value.imm;
+          int64_t dst = det.operands[0].reg - ARM64_REG_X0;
+          int64_t imm = det.operands[1].imm;
           assert(dst < 29);
           registers[dst] = imm;
         } else if (ins.id == ARM64_INS_ADD &&
-                   ins.operands[1].type == Operand::OP_TYPE_REG &&
-                   ins.operands[2].type == Operand::OP_TYPE_IMM) {
-          int64_t dst = ins.operands[0].aarch64_value.reg - ARM64_REG_X0;
-          int64_t lhs = ins.operands[1].aarch64_value.reg - ARM64_REG_X0;
-          int64_t rhs = ins.operands[2].aarch64_value.imm & 0xFFF;
+                   det.operands[1].type == ARM64_OP_REG &&
+                   det.operands[2].type == ARM64_OP_IMM) {
+          int64_t dst = det.operands[0].reg - ARM64_REG_X0;
+          int64_t lhs = det.operands[1].reg - ARM64_REG_X0;
+          int64_t rhs = det.operands[2].imm & 0xFFF;
           assert(dst < 29 && lhs < 29);
           registers[dst] = registers[lhs] + rhs;
           if (registers[dst] != -1) {
             jmptab_addr = (uint64_t)(registers[dst]);
             scale       = 0;
           }
-        } else if (ins.operands[0].type == Operand::OP_TYPE_REG &&
-                   ins.operands[0].aarch64_value.reg >= ARM64_REG_X0 &&
-                   ins.operands[0].aarch64_value.reg <= ARM64_REG_X28) {
-          int64_t dst    = ins.operands[0].aarch64_value.reg - ARM64_REG_X0;
+        } else if (det.operands[0].type == ARM64_OP_REG &&
+                   det.operands[0].reg >= ARM64_REG_X0 &&
+                   det.operands[0].reg <= ARM64_REG_X28) {
+          int64_t dst    = det.operands[0].reg - ARM64_REG_X0;
           registers[dst] = -1;
         }
       }
@@ -248,7 +250,7 @@ CFG::find_switches_aarch64() {
       for (auto& sec : this->binary->sections) {
         if (sec.contains(jmptab_addr)) {
           verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
-                  jmptab_addr, bb->insns.back().start);
+                  jmptab_addr, bb->insns.back().address);
           jmptab_idx = jmptab_addr - sec.vma;
           jmptab_end = jmptab_addr;
           jmptab8    = (uint8_t*)&sec.bytes[jmptab_idx];
@@ -302,13 +304,13 @@ CFG::find_switches_aarch64() {
               verbose(3,
                       "removing switch edge 0x%016jx -> 0x%016jx (detected "
                       "overlapping jump table or case)",
-                      conflict_edge->src->insns.back().start, case_addr);
+                      conflict_edge->src->insns.back().address, case_addr);
               unlink_edge(conflict_edge->src, cc);
               conflict_edge = NULL;
             }
             if (!conflict_edge) {
               verbose(3, "adding switch edge 0x%016jx -> 0x%016jx",
-                      bb->insns.back().start, case_addr);
+                      bb->insns.back().address, case_addr);
               link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr,
                        jmptab_addr);
             }
@@ -344,7 +346,8 @@ CFG::find_switches_arm() {
       target_sec = bb->section;
       for (auto rit = bb->insns.rbegin(); rit != bb->insns.rend(); ++rit) {
         const auto& ins = *rit;
-        if (ins.operands.size() < 2) {
+        auto const  det = ins.detail.arm;
+        if (det.op_count < 2) {
           continue;
         }
         /* Pattern #1
@@ -356,22 +359,19 @@ CFG::find_switches_arm() {
          * - Using ldrls (gcc)
          *     ldrls   pc, [pc, rN, lsl#2]
          */
-        if (ins.id == ARM_INS_ADD &&
-            ins.operands[1].type == Operand::OP_TYPE_REG &&
-            ins.operands[1].arm_value.reg == ARM_REG_PC &&
-            ins.operands[2].type == Operand::OP_TYPE_IMM) {
-          int64_t imm = ins.operands[2].arm_value.imm;
-          jmptab_addr = (ins.start + 8) + imm;
+        if (ins.id == ARM_INS_ADD && det.operands[1].type == ARM_OP_REG &&
+            det.operands[1].reg == ARM_REG_PC &&
+            det.operands[2].type == ARM_OP_IMM) {
+          int64_t imm = det.operands[2].imm;
+          jmptab_addr = (ins.address + 8) + imm;
           break;
-        } else if (ins.id == ARM_INS_ADR &&
-                   ins.operands[0].arm_value.reg == ARM_REG_PC) {
-          int64_t imm = ins.operands[1].arm_value.imm;
-          jmptab_addr = (ins.start + 8) + imm;
+        } else if (ins.id == ARM_INS_ADR && det.operands[0].reg == ARM_REG_PC) {
+          int64_t imm = det.operands[1].imm;
+          jmptab_addr = (ins.address + 8) + imm;
           break;
-        } else if (ins.id == ARM_INS_LDR &&
-                   ins.operands[0].arm_value.reg == ARM_REG_PC &&
-                   ins.operands[1].arm_value.reg == ARM_REG_PC) {
-          jmptab_addr = (ins.start + 8);
+        } else if (ins.id == ARM_INS_LDR && det.operands[0].reg == ARM_REG_PC &&
+                   det.operands[1].reg == ARM_REG_PC) {
+          jmptab_addr = (ins.address + 8);
           break;
         }
       }
@@ -382,7 +382,7 @@ CFG::find_switches_arm() {
       for (auto& sec : this->binary->sections) {
         if (sec.contains(jmptab_addr)) {
           verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
-                  jmptab_addr, bb->insns.back().start);
+                  jmptab_addr, bb->insns.back().address);
           jmptab_idx = jmptab_addr - sec.vma;
           jmptab_end = jmptab_addr;
           jmptab     = (uint32_t*)&sec.bytes[jmptab_idx];
@@ -411,13 +411,13 @@ CFG::find_switches_arm() {
                 verbose(3,
                         "removing switch edge 0x%016jx -> 0x%016jx "
                         "(detected overlapping jump table or case)",
-                        conflict_edge->src->insns.back().start, case_addr);
+                        conflict_edge->src->insns.back().address, case_addr);
                 unlink_edge(conflict_edge->src, cc);
                 conflict_edge = NULL;
               }
               if (!conflict_edge) {
                 verbose(3, "adding switch edge 0x%016jx -> 0x%016jx",
-                        bb->insns.back().start, case_addr);
+                        bb->insns.back().address, case_addr);
                 link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr,
                          jmptab_addr);
               }
@@ -466,7 +466,8 @@ CFG::find_switches_mips() {
     if (bb->insns.back().edge_type() == Edge::EDGE_TYPE_JMP_INDIRECT) {
       target_sec = bb->section;
       for (auto& ins : bb->insns) {
-        if (ins.operands.size() < 2) {
+        auto const det = ins.detail.mips;
+        if (det.op_count < 2) {
           continue;
         }
         /* Pattern #1
@@ -488,23 +489,23 @@ CFG::find_switches_mips() {
          *     daddu   $A, $A, $B
          */
         if (ins.id == MIPS_INS_LUI) {
-          int64_t dst = ins.operands[0].mips_value.reg - MIPS_REG_0;
-          int64_t imm = ins.operands[1].mips_value.imm;
+          int64_t dst = det.operands[0].reg - MIPS_REG_0;
+          int64_t imm = det.operands[1].imm;
           assert(dst < 32);
           registers[dst] = imm << 16;
         } else if (ins.id == MIPS_INS_ADDIU || ins.id == MIPS_INS_DADDIU) {
-          int64_t dst = ins.operands[0].mips_value.reg - MIPS_REG_0;
-          int64_t lhs = ins.operands[1].mips_value.reg - MIPS_REG_0;
-          int64_t rhs = ins.operands[2].mips_value.imm;
+          int64_t dst = det.operands[0].reg - MIPS_REG_0;
+          int64_t lhs = det.operands[1].reg - MIPS_REG_0;
+          int64_t rhs = det.operands[2].imm;
           assert(dst < 32 && lhs < 32);
           registers[dst] = registers[lhs] + rhs;
           if (registers[dst] != -1) {
             jmptab_addr = (uint64_t)(registers[dst]);
           }
         } else if (ins.id == MIPS_INS_ADDU) {
-          int64_t dst = ins.operands[0].mips_value.reg - MIPS_REG_0;
-          int64_t lhs = ins.operands[1].mips_value.reg - MIPS_REG_0;
-          int64_t rhs = ins.operands[2].mips_value.reg - MIPS_REG_0;
+          int64_t dst = det.operands[0].reg - MIPS_REG_0;
+          int64_t lhs = det.operands[1].reg - MIPS_REG_0;
+          int64_t rhs = det.operands[2].reg - MIPS_REG_0;
           assert(dst < 32 && lhs < 32 && rhs < 32);
           /* addu emulation is intentionally wrong. the goal is replacing:
            * - `dst = jumptable + offset` => `dst = jumptable`
@@ -515,31 +516,30 @@ CFG::find_switches_mips() {
             registers[dst] = registers[rhs];
           }
         } else if (ins.id == MIPS_INS_LW) {
-          int64_t reg = ins.operands[1].mips_value.mem.base - MIPS_REG_0;
-          int64_t imm = ins.operands[1].mips_value.mem.disp;
+          int64_t reg = det.operands[1].mem.base - MIPS_REG_0;
+          int64_t imm = det.operands[1].mem.disp;
           assert(reg < 32);
           if (registers[reg] != -1) {
             jmptab_addr = (uint64_t)(registers[reg] + imm);
           }
         } else if (ins.id == MIPS_INS_DADDU) {
-          int64_t dst = ins.operands[0].mips_value.reg - MIPS_REG_0;
-          int64_t lhs = ins.operands[1].mips_value.reg - MIPS_REG_0;
-          int64_t rhs = ins.operands[2].mips_value.reg - MIPS_REG_0;
+          int64_t dst = det.operands[0].reg - MIPS_REG_0;
+          int64_t lhs = det.operands[1].reg - MIPS_REG_0;
+          int64_t rhs = det.operands[2].reg - MIPS_REG_0;
           assert(dst < 32 && lhs < 32 && rhs < 32);
           registers[dst] = registers[lhs] + registers[rhs];
           if (registers[dst] != -1) {
             jmptab_addr = (uint64_t)(registers[dst]);
           }
-        } else if (ins.id == MIPS_INS_DSLL32 &&
-                   ins.operands[2].mips_value.reg == 0) {
-          int64_t dst = ins.operands[0].mips_value.reg - MIPS_REG_0;
-          int64_t src = ins.operands[1].mips_value.reg - MIPS_REG_0;
+        } else if (ins.id == MIPS_INS_DSLL32 && det.operands[2].reg == 0) {
+          int64_t dst = det.operands[0].reg - MIPS_REG_0;
+          int64_t src = det.operands[1].reg - MIPS_REG_0;
           assert(dst < 32 && src < 32);
           registers[dst] = src << 32;
-        } else if (ins.operands[0].type == Operand::OP_TYPE_REG &&
-                   ins.operands[0].mips_value.reg >= MIPS_REG_0 &&
-                   ins.operands[0].mips_value.reg <= MIPS_REG_31) {
-          int64_t dst    = ins.operands[0].mips_value.reg - MIPS_REG_0;
+        } else if (det.operands[0].type == MIPS_OP_REG &&
+                   det.operands[0].reg >= MIPS_REG_0 &&
+                   det.operands[0].reg <= MIPS_REG_31) {
+          int64_t dst    = det.operands[0].reg - MIPS_REG_0;
           registers[dst] = -1;
         }
       }
@@ -550,7 +550,7 @@ CFG::find_switches_mips() {
       for (auto& sec : this->binary->sections) {
         if (sec.contains(jmptab_addr)) {
           verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
-                  jmptab_addr, bb->insns.back().start);
+                  jmptab_addr, bb->insns.back().address);
           jmptab_idx = jmptab_addr - sec.vma;
           jmptab_end = jmptab_addr;
           jmptab32   = (uint32_t*)&sec.bytes[jmptab_idx];
@@ -592,13 +592,13 @@ CFG::find_switches_mips() {
                 verbose(3,
                         "removing switch edge 0x%016jx -> 0x%016jx "
                         "(detected overlapping jump table or case)",
-                        conflict_edge->src->insns.back().start, case_addr);
+                        conflict_edge->src->insns.back().address, case_addr);
                 unlink_edge(conflict_edge->src, cc);
                 conflict_edge = NULL;
               }
               if (!conflict_edge) {
                 verbose(3, "adding switch edge 0x%016jx -> 0x%016jx",
-                        bb->insns.back().start, case_addr);
+                        bb->insns.back().address, case_addr);
                 link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr,
                          jmptab_addr);
               }
@@ -644,7 +644,8 @@ CFG::find_switches_ppc() {
     if (bb->insns.back().edge_type() == Edge::EDGE_TYPE_JMP_INDIRECT) {
       target_sec = bb->section;
       for (auto& ins : bb->insns) {
-        if (ins.operands.size() < 2) {
+        auto const det = ins.detail.ppc;
+        if (det.op_count < 2) {
           continue;
         }
         /* Pattern #1 (32-bit)
@@ -657,22 +658,22 @@ CFG::find_switches_ppc() {
          *     lis    rN, .L@ha
          *     ori    rN, rN, .L@l */
         if (ins.id == PPC_INS_LIS) {
-          int64_t dst = ins.operands[0].ppc_value.reg - PPC_REG_R0;
-          int64_t imm = ins.operands[1].ppc_value.imm;
+          int64_t dst = det.operands[0].reg - PPC_REG_R0;
+          int64_t imm = det.operands[1].imm;
           assert(dst < 32);
           registers[dst] = imm << 16;
         } else if (ins.id == PPC_INS_ADDI || ins.id == PPC_INS_ORI) {
-          int64_t lhs = ins.operands[1].ppc_value.reg - PPC_REG_R0;
-          int64_t rhs = ins.operands[2].ppc_value.imm;
+          int64_t lhs = det.operands[1].reg - PPC_REG_R0;
+          int64_t rhs = det.operands[2].imm;
           assert(lhs < 32);
           if (registers[lhs] != -1) {
             jmptab_addr = (uint64_t)(registers[lhs] | rhs);
             break;
           }
-        } else if (ins.operands[0].type == Operand::OP_TYPE_REG &&
-                   ins.operands[0].ppc_value.reg >= PPC_REG_R0 &&
-                   ins.operands[0].ppc_value.reg <= PPC_REG_R31) {
-          int64_t dst    = ins.operands[0].ppc_value.reg - PPC_REG_R0;
+        } else if (det.operands[0].type == PPC_OP_REG &&
+                   det.operands[0].reg >= PPC_REG_R0 &&
+                   det.operands[0].reg <= PPC_REG_R31) {
+          int64_t dst    = det.operands[0].reg - PPC_REG_R0;
           registers[dst] = -1;
         }
       }
@@ -683,7 +684,7 @@ CFG::find_switches_ppc() {
       for (auto& sec : this->binary->sections) {
         if (sec.contains(jmptab_addr)) {
           verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
-                  jmptab_addr, bb->insns.back().start);
+                  jmptab_addr, bb->insns.back().address);
           jmptab_idx = jmptab_addr - sec.vma;
           jmptab_end = jmptab_addr;
           jmptab32   = (uint32_t*)&sec.bytes[jmptab_idx];
@@ -725,13 +726,13 @@ CFG::find_switches_ppc() {
                 verbose(3,
                         "removing switch edge 0x%016jx -> 0x%016jx "
                         "(detected overlapping jump table or case)",
-                        conflict_edge->src->insns.back().start, case_addr);
+                        conflict_edge->src->insns.back().address, case_addr);
                 unlink_edge(conflict_edge->src, cc);
                 conflict_edge = NULL;
               }
               if (!conflict_edge) {
                 verbose(3, "adding switch edge 0x%016jx -> 0x%016jx",
-                        bb->insns.back().start, case_addr);
+                        bb->insns.back().address, case_addr);
                 link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr,
                          jmptab_addr);
               }
@@ -750,17 +751,17 @@ CFG::find_switches_ppc() {
 
 void
 CFG::find_switches_x86() {
-  BB *      bb, *cc;
-  Edge*     conflict_edge;
-  Section*  target_sec;
-  Operand * op_target, *op_reg, *op_mem;
-  int       scale;
-  unsigned  offset;
-  uint64_t  jmptab_addr, jmptab_idx, jmptab_end, case_addr;
-  uint8_t*  jmptab8;
-  uint16_t* jmptab16;
-  uint32_t* jmptab32;
-  uint64_t* jmptab64;
+  BB *       bb, *cc;
+  Edge*      conflict_edge;
+  Section*   target_sec;
+  cs_x86_op *op_target, *op_reg, *op_mem;
+  int        scale;
+  unsigned   offset;
+  uint64_t   jmptab_addr, jmptab_idx, jmptab_end, case_addr;
+  uint8_t*   jmptab8;
+  uint16_t*  jmptab16;
+  uint32_t*  jmptab32;
+  uint64_t*  jmptab64;
   std::list<Instruction>::iterator ins;
 
   for (auto& kv : this->start2bb) {
@@ -770,36 +771,36 @@ CFG::find_switches_x86() {
     /* If this BB ends in an indirect jmp, scan the BB for what looks like
      * an instruction loading a target from a jump table */
     if (bb->insns.back().edge_type() == Edge::EDGE_TYPE_JMP_INDIRECT) {
-      if (bb->insns.back().operands.size() < 1) {
+      if (bb->insns.back().detail.x86.op_count < 1) {
         print_warn("Indirect jump has no target operand");
         continue;
       }
       target_sec = bb->section;
-      op_target  = &bb->insns.back().operands[0];
-      if (op_target->type == Operand::OP_TYPE_MEM) {
-        jmptab_addr = (uint64_t)op_target->x86_value.mem.disp;
-        scale       = op_target->x86_value.mem.scale;
-      } else if (op_target->type != Operand::OP_TYPE_REG) {
+      op_target  = &bb->insns.back().detail.x86.operands[0];
+      if (op_target->type == X86_OP_MEM) {
+        jmptab_addr = (uint64_t)op_target->mem.disp;
+        scale       = op_target->mem.scale;
+      } else if (op_target->type != X86_OP_REG) {
         ins = bb->insns.end();
         ins--; /* Skip the jmp itself */
         while (ins != bb->insns.begin()) {
           ins--;
-          if (ins->operands.empty()) {
+          if (ins->detail.x86.op_count == 0) {
             continue;
           }
-          op_reg = &ins->operands[0];
-          if (op_reg->type != Operand::OP_TYPE_REG) {
+          op_reg = &ins->detail.x86.operands[0];
+          if (op_reg->type != X86_OP_REG) {
             continue;
-          } else if (op_reg->x86_value.reg != op_target->x86_value.reg) {
+          } else if (op_reg->reg != op_target->reg) {
             continue;
           } else {
             /* This is the last instruction that loads the jump target register,
              * see if we can find a jump table address from it */
-            if (ins->operands.size() >= 2) {
-              op_mem = &ins->operands[1];
-              if (op_mem->type == Operand::OP_TYPE_MEM) {
-                jmptab_addr = (uint64_t)op_mem->x86_value.mem.disp;
-                scale       = op_mem->x86_value.mem.scale;
+            if (ins->detail.x86.op_count >= 2) {
+              op_mem = &ins->detail.x86.operands[1];
+              if (op_mem->type == X86_OP_MEM) {
+                jmptab_addr = (uint64_t)op_mem->mem.disp;
+                scale       = op_mem->mem.scale;
               }
             } else {
               /* No luck :-( */
@@ -815,7 +816,7 @@ CFG::find_switches_x86() {
       for (auto& sec : this->binary->sections) {
         if (sec.contains(jmptab_addr)) {
           verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
-                  jmptab_addr, bb->insns.back().start);
+                  jmptab_addr, bb->insns.back().address);
           jmptab_idx = jmptab_addr - sec.vma;
           jmptab_end = jmptab_addr;
           jmptab8    = (uint8_t*)&sec.bytes[jmptab_idx];
@@ -865,13 +866,13 @@ CFG::find_switches_x86() {
                 verbose(3,
                         "removing switch edge 0x%016jx -> 0x%016jx "
                         "(detected overlapping jump table or case)",
-                        conflict_edge->src->insns.back().start, case_addr);
+                        conflict_edge->src->insns.back().address, case_addr);
                 unlink_edge(conflict_edge->src, cc);
                 conflict_edge = NULL;
               }
               if (!conflict_edge) {
                 verbose(3, "adding switch edge 0x%016jx -> 0x%016jx",
-                        bb->insns.back().start, case_addr);
+                        bb->insns.back().address, case_addr);
                 link_bbs(Edge::EDGE_TYPE_JMP_INDIRECT, bb, case_addr,
                          jmptab_addr);
               }
