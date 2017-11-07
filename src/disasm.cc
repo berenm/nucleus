@@ -48,84 +48,77 @@ DisasmSection::sort_BBs() {
  **                                AddressMap                                 **
  ******************************************************************************/
 void
-AddressMap::insert(uint64_t addr) {
-  if (!contains(addr)) {
-    unmapped.push_back(addr);
-    unmapped_lookup[addr] = unmapped.size() - 1;
+AddressMap::print_regions(FILE* out) {
+  for (auto it = regions.begin(), end = regions.end(); it != end; ++it) {
+    fprintf(out, "@0x%016jx - 0x%016jx: %s%s%s%s\n", it->first,
+            std::next(it) == end ? -1 : std::next(it)->first - 1,
+            it->second & DISASM_REGION_DATA ? "d" : "-",
+            it->second & DISASM_REGION_CODE ? "c" : "-",
+            it->second & DISASM_REGION_BB ? "b" : "-",
+            it->second & DISASM_REGION_FUNC ? "f" : "-");
   }
 }
 
-bool
-AddressMap::contains(uint64_t addr) {
-  return addrmap.count(addr) || unmapped_lookup.count(addr);
+unsigned
+AddressMap::get_region_type(uint64_t addr) {
+  auto it = std::prev(regions.upper_bound(addr));
+  return it->second;
 }
 
-unsigned
-AddressMap::get_addr_type(uint64_t addr) {
-  assert(contains(addr));
-  if (!contains(addr)) {
-    return AddressMap::DISASM_REGION_UNMAPPED;
+void
+AddressMap::set_region_type(uint64_t addr, unsigned type) {
+  auto it    = std::prev(regions.upper_bound(addr));
+  it->second = type;
+}
+
+void
+AddressMap::add_region_type(uint64_t addr, uint64_t size, unsigned type) {
+  auto it = regions.upper_bound(addr);
+  if (it != regions.end() && it->first < addr + size) {
+    add_region_type(addr, it->first - addr, type);
+    add_region_type(it->first, size - (it->first - addr), type);
   } else {
-    return addrmap[addr];
+    auto types = std::prev(it)->second;
+    if ((types & type) == type)
+      return;
+
+    if (it != regions.end() && it->second == types)
+      regions.erase(it);
+    it = regions.insert(it, std::make_pair(addr + size, types));
+
+    if (std::prev(it)->first != addr)
+      regions.insert(it, std::make_pair(addr, types | type));
+    else if (std::prev(std::prev(it))->second == (std::prev(it)->second | type))
+      regions.erase(std::prev(it));
+    else
+      std::prev(it)->second |= type;
   }
-}
-unsigned
-AddressMap::addr_type(uint64_t addr) {
-  return get_addr_type(addr);
 }
 
 void
-AddressMap::set_addr_type(uint64_t addr, unsigned type) {
-  assert(contains(addr));
-  if (contains(addr)) {
-    if (type != AddressMap::DISASM_REGION_UNMAPPED) {
-      erase_unmapped(addr);
+AddressMap::clr_region_type(uint64_t addr, uint64_t size, unsigned type) {
+  auto it = regions.upper_bound(addr);
+  if (it != regions.end() && it->first < addr + size) {
+    clr_region_type(addr, it->first - addr, type);
+    clr_region_type(it->first, size - (it->first - addr), type);
+  } else {
+    auto prev   = std::prev(it);
+    auto types  = prev->second;
+    auto ctypes = types & ~type;
+
+    if (prev->first < addr) {
+      if (it->second == ctypes)
+        regions.erase(it);
+      regions.insert(it, std::make_pair(addr, ctypes));
+    } else if (std::prev(prev)->second == ctypes) {
+      regions.erase(prev);
+    } else {
+      prev->second = ctypes;
     }
-    addrmap[addr] = type;
-  }
-}
 
-void
-AddressMap::add_addr_flag(uint64_t addr, unsigned flag) {
-  assert(contains(addr));
-  if (contains(addr)) {
-    if (flag != AddressMap::DISASM_REGION_UNMAPPED) {
-      erase_unmapped(addr);
+    if (it != regions.end() && it->first > addr + size) {
+      regions.insert(it, std::make_pair(addr + size, types));
     }
-    addrmap[addr] |= flag;
-  }
-}
-
-size_t
-AddressMap::unmapped_count() {
-  return unmapped.size();
-}
-
-uint64_t
-AddressMap::get_unmapped(size_t i) {
-  return unmapped[i];
-}
-
-void
-AddressMap::erase(uint64_t addr) {
-  if (addrmap.count(addr)) {
-    addrmap.erase(addr);
-  }
-  erase_unmapped(addr);
-}
-
-void
-AddressMap::erase_unmapped(uint64_t addr) {
-  size_t i;
-
-  if (unmapped_lookup.count(addr)) {
-    if (unmapped_count() > 1) {
-      i                                = unmapped_lookup[addr];
-      unmapped[i]                      = unmapped.back();
-      unmapped_lookup[unmapped.back()] = i;
-    }
-    unmapped_lookup.erase(addr);
-    unmapped.pop_back();
   }
 }
 
@@ -150,9 +143,8 @@ init_disasm(Binary* bin, std::list<DisasmSection>* disasm) {
     dis = &disasm->back();
 
     dis->section = sec;
-    for (vma = sec->vma; vma < (sec->vma + sec->size); vma++) {
-      dis->addrmap.insert(vma);
-    }
+    dis->addrmap.add_region_type(sec->vma, sec->size,
+                                 AddressMap::DISASM_REGION_CODE);
   }
   verbose(1, "disassembler initialized");
 
@@ -222,15 +214,9 @@ nucleus_disasm_section(Binary* bin, DisasmSection* dis) {
     }
     for (i = 0; i < n; i++) {
       if (mutants[i].alive) {
-        dis->addrmap.add_addr_flag(mutants[i].start,
-                                   AddressMap::DISASM_REGION_BB_START);
-        for (auto& ins : mutants[i].insns) {
-          dis->addrmap.add_addr_flag(ins.address,
-                                     AddressMap::DISASM_REGION_INS_START);
-        }
-        for (vma = mutants[i].start; vma < mutants[i].end; vma++) {
-          dis->addrmap.add_addr_flag(vma, AddressMap::DISASM_REGION_CODE);
-        }
+        dis->addrmap.add_region_type(
+            mutants[i].start, mutants[i].end - mutants[i].start,
+            AddressMap::DISASM_REGION_CODE | AddressMap::DISASM_REGION_BB);
         dis->BBs.push_back(BB(mutants[i]));
         Q.push(&dis->BBs.back());
       }

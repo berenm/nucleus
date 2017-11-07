@@ -16,32 +16,24 @@
 class AddressMap {
 public:
   enum DisasmRegion {
-    DISASM_REGION_UNMAPPED   = 0x0000,
-    DISASM_REGION_CODE       = 0x0001,
-    DISASM_REGION_DATA       = 0x0002,
-    DISASM_REGION_INS_START  = 0x0100,
-    DISASM_REGION_BB_START   = 0x0200,
-    DISASM_REGION_FUNC_START = 0x0400
+    DISASM_REGION_UNMAPPED = 0x0000,
+    DISASM_REGION_DATA     = 0x0001,
+    DISASM_REGION_CODE     = 0x0002,
+    DISASM_REGION_BB       = 0x0100,
+    DISASM_REGION_FUNC     = 0x0200,
   };
 
-  AddressMap() {}
+  AddressMap() { regions[0] = DISASM_REGION_UNMAPPED; }
 
-  void     insert(uint64_t addr);
-  bool     contains(uint64_t addr);
-  unsigned get_addr_type(uint64_t addr);
-  void     set_addr_type(uint64_t addr, unsigned type);
-  void     add_addr_flag(uint64_t addr, unsigned flag);
-  unsigned addr_type(uint64_t addr);
+  void print_regions(FILE* out);
 
-  size_t   unmapped_count();
-  uint64_t get_unmapped(size_t i);
-  void     erase(uint64_t addr);
-  void     erase_unmapped(uint64_t addr);
+  unsigned get_region_type(uint64_t addr);
+  void     set_region_type(uint64_t addr, unsigned type);
+  void     add_region_type(uint64_t addr, uint64_t size, unsigned type);
+  void     clr_region_type(uint64_t addr, uint64_t size, unsigned type);
 
 private:
-  std::map<uint64_t, unsigned> addrmap;
-  std::vector<uint64_t>        unmapped;
-  std::map<uint64_t, size_t>   unmapped_lookup;
+  std::map<uint64_t, unsigned> regions;
 };
 
 class DisasmSection {

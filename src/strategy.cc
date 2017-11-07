@@ -79,8 +79,8 @@ bb_queue_recursive(DisasmSection* dis, BB* parent, BB** mutants, unsigned n,
   for (auto& ins : parent->insns) {
     target = ins.target;
     if (target && dis->section->contains(target) &&
-        !(dis->addrmap.addr_type(target) &
-          AddressMap::DISASM_REGION_BB_START)) {
+        !(dis->addrmap.get_region_type(target) &
+          AddressMap::DISASM_REGION_BB)) {
       /* recursively queue the target BB for disassembly */
       (*mutants)[n++].set(target, 0);
     }
@@ -91,8 +91,8 @@ bb_queue_recursive(DisasmSection* dis, BB* parent, BB** mutants, unsigned n,
       (parent->insns.back().flags & Instruction::INS_FLAG_CALL)) {
     /* queue fall-through block of conditional jump or call */
     if (((n + 1) < max_mutants) && dis->section->contains(parent->end) &&
-        !(dis->addrmap.addr_type(parent->end) &
-          AddressMap::DISASM_REGION_BB_START)) {
+        !(dis->addrmap.get_region_type(parent->end) &
+          AddressMap::DISASM_REGION_BB)) {
       (*mutants)[n++].set(parent->end, 0);
     }
   }
@@ -142,8 +142,8 @@ bb_mutate_recursive(DisasmSection* dis, BB* parent, BB** mutants) {
     if (n == 0) {
       /* no recursive targets found, resort to heuristics */
       if (dis->section->contains(parent->end) &&
-          !(dis->addrmap.addr_type(parent->end) &
-            AddressMap::DISASM_REGION_BB_START)) {
+          !(dis->addrmap.get_region_type(parent->end) &
+            AddressMap::DISASM_REGION_BB)) {
         /* guess next BB directly after parent */
         (*mutants)[n++].set(parent->end, 0);
       }
