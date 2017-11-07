@@ -50,12 +50,13 @@ DisasmSection::sort_BBs() {
 void
 AddressMap::print_regions(FILE* out) {
   for (auto it = regions.begin(), end = regions.end(); it != end; ++it) {
-    fprintf(out, "@0x%016jx - 0x%016jx: %s%s%s%s\n", it->first,
+    fprintf(out, "@0x%016jx - 0x%016jx: %s%s%s%s%s\n", it->first,
             std::next(it) == end ? -1 : std::next(it)->first - 1,
             it->second & DISASM_REGION_DATA ? "d" : "-",
             it->second & DISASM_REGION_CODE ? "c" : "-",
             it->second & DISASM_REGION_BB ? "b" : "-",
-            it->second & DISASM_REGION_FUNC ? "f" : "-");
+            it->second & DISASM_REGION_FN ? "f" : "-",
+            it->second & DISASM_REGION_JT ? "j" : "-");
   }
 }
 

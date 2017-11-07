@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include <capstone/capstone.h>
 
 #include "disasm-x86.h"
@@ -187,6 +189,118 @@ is_cs_privileged_ins(cs_insn* ins) {
   }
 }
 
+void
+nucleus_mark_jtable_x86(Binary* bin, DisasmSection* dis, BB* bb,
+                        Instruction* ins) {
+  BB*        cc;
+  Edge*      conflict_edge;
+  Section*   target_sec;
+  int        scale;
+  unsigned   offset;
+  uint64_t   jmptab_addr, jmptab_idx, jmptab_end, case_addr;
+  uint8_t*   jmptab;
+  cs_x86_op *op_target, *op_reg, *op_mem;
+
+  jmptab_addr = 0;
+  target_sec  = NULL;
+  /* If this BB ends in an indirect jmp, scan the BB for what looks like
+   * an instruction loading a target from a jump table */
+  if (ins->edge_type() == Edge::EDGE_TYPE_JMP_INDIRECT) {
+    if (ins->detail.x86.op_count < 1) {
+      print_warn("Indirect jump has no target operand");
+      return;
+    }
+    target_sec = bb->section;
+    op_target  = &bb->insns.back().detail.x86.operands[0];
+    if (op_target->type == X86_OP_MEM) {
+      jmptab_addr = (uint64_t)op_target->mem.disp;
+      scale       = op_target->mem.scale;
+    } else if (op_target->type != X86_OP_REG) {
+      ins--; /* Skip the jmp itself */
+      while (ins != &bb->insns.front()) {
+        ins--;
+        if (ins->detail.x86.op_count == 0) {
+          continue;
+        }
+        op_reg = &ins->detail.x86.operands[0];
+        if (op_reg->type != X86_OP_REG) {
+          continue;
+        } else if (op_reg->reg != op_target->reg) {
+          continue;
+        } else {
+          /* This is the last instruction that loads the jump target register,
+           * see if we can find a jump table address from it */
+          if (ins->detail.x86.op_count >= 2) {
+            op_mem = &ins->detail.x86.operands[1];
+            if (op_mem->type == X86_OP_MEM) {
+              jmptab_addr = (uint64_t)op_mem->mem.disp;
+              scale       = op_mem->mem.scale;
+            }
+          } else {
+            /* No luck :-( */
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  if (dis->addrmap.get_region_type(jmptab_addr) & AddressMap::DISASM_REGION_JT)
+    return;
+
+  if (jmptab_addr) {
+    jmptab_end = 0;
+    for (auto& sec : bin->sections) {
+      if (sec.contains(jmptab_addr)) {
+        verbose(4, "parsing jump table at 0x%016jx (jump at 0x%016jx)",
+                jmptab_addr, bb->insns.back().address);
+        jmptab_end = jmptab_addr;
+        jmptab_idx = jmptab_addr - sec.vma;
+        jmptab     = &sec.bytes[jmptab_idx];
+
+        while (1) {
+          if ((jmptab_idx - scale) < 0)
+            break;
+          jmptab_addr -= scale;
+          jmptab_idx -= scale;
+          jmptab -= scale;
+          case_addr = 0;
+          memcpy(&case_addr, jmptab, scale);
+          if (!case_addr)
+            break;
+          if (case_addr == 0x0004c25d)
+            break;
+          if (!target_sec->contains(case_addr))
+            break;
+        }
+        jmptab_addr += scale;
+
+        jmptab_idx = jmptab_end - sec.vma;
+        jmptab     = &sec.bytes[jmptab_idx];
+        while (1) {
+          if ((jmptab_idx + scale) >= sec.size)
+            break;
+          case_addr = 0;
+          memcpy(&case_addr, jmptab, scale);
+          if (!case_addr)
+            break;
+          if (!target_sec->contains(case_addr))
+            break;
+          jmptab_end += scale;
+          jmptab_idx += scale;
+          jmptab += scale;
+        }
+        break;
+      }
+    }
+
+    if (jmptab_addr && jmptab_end && jmptab_addr < jmptab_end) {
+      dis->addrmap.add_region_type(jmptab_addr, jmptab_end - jmptab_addr,
+                                   AddressMap::DISASM_REGION_JT);
+    }
+  }
+}
+
 int
 nucleus_disasm_bb_x86(Binary* bin, DisasmSection* dis, BB* bb) {
   int ret, jmp, cflow, cond, call, nop, only_nop, priv, trap, ndisassembled;
@@ -271,6 +385,9 @@ nucleus_disasm_bb_x86(Binary* bin, DisasmSection* dis, BB* bb) {
       }
     }
 
+    if (insn.flags & Instruction::INS_FLAG_INDIRECT)
+      nucleus_mark_jtable_x86(bin, dis, bb, &insn);
+
     for (j = 0; j < insn.detail.x86.op_count; j++) {
       cs_op = &insn.detail.x86.operands[j];
       if ((cs_op->type == X86_OP_IMM) &&
@@ -288,6 +405,10 @@ nucleus_disasm_bb_x86(Binary* bin, DisasmSection* dis, BB* bb) {
         insn.flags |= Instruction::INS_FLAG_DATA;
         insn.flags |= Instruction::INS_FLAG_INDIRECT;
       }
+    }
+
+    if (dis->addrmap.get_region_type(pc_addr) & AddressMap::DISASM_REGION_JT) {
+      break;
     }
 
     bb->end += insn.size;

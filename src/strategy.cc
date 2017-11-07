@@ -43,7 +43,10 @@ bb_mutate_linear(DisasmSection* dis, BB* parent, BB** mutants) {
     (**mutants).set(dis->section->vma, 0);
   } else if (dis->section->contains(parent->end)) {
     /* next BB is directly after the current BB */
-    (**mutants).set(parent->end, 0);
+    uint64_t start = parent->end;
+    while (dis->addrmap.get_region_type(start) & AddressMap::DISASM_REGION_JT)
+      start++;
+    (**mutants).set(start, 0);
   } else {
     (**mutants).set(0, 0);
     return 0;
