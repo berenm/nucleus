@@ -271,14 +271,23 @@ nucleus_disasm_bb_x86(Binary* bin, DisasmSection* dis, BB* bb) {
       }
     }
 
-    for (i = 0; i < insn.detail.groups_count; i++) {
-      if (is_cs_cflow_group(insn.detail.groups[i])) {
-        for (j = 0; j < insn.detail.x86.op_count; j++) {
-          cs_op = &insn.detail.x86.operands[j];
-          if (cs_op->type == X86_OP_IMM) {
-            insn.target = cs_op->imm;
-          }
-        }
+    for (j = 0; j < insn.detail.x86.op_count; j++) {
+      cs_op = &insn.detail.x86.operands[j];
+      if ((cs_op->type == X86_OP_IMM) &&
+          ((insn.flags & Instruction::INS_FLAG_CFLOW != 0) ||
+           ((cs_op->imm >= dis->section->vma) &&
+            (cs_op->imm < dis->section->vma + dis->section->size)))) {
+        insn.target = cs_op->imm;
+        insn.flags |= Instruction::INS_FLAG_DATA;
+      } else if ((cs_op->type == X86_OP_MEM) &&
+                 ((insn.detail.x86.op_count == 1) || (j > 0)) &&
+                 (cs_op->mem.base != X86_REG_ESP) &&
+                 (cs_op->mem.base != X86_REG_EBP) &&
+                 (cs_op->mem.disp >= dis->section->vma) &&
+                 (cs_op->mem.disp < dis->section->vma + dis->section->size)) {
+        insn.target = cs_op->mem.disp;
+        insn.flags |= Instruction::INS_FLAG_DATA;
+        insn.flags |= Instruction::INS_FLAG_INDIRECT;
       }
     }
 

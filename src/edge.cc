@@ -19,6 +19,12 @@ Edge::type2str() {
   case EDGE_TYPE_CALL_INDIRECT:
     s = "icall";
     break;
+  case EDGE_TYPE_DATA:
+    s = "data";
+    break;
+  case EDGE_TYPE_DATA_INDIRECT:
+    s = "idata";
+    break;
   case EDGE_TYPE_RET:
     s = "ret";
     break;

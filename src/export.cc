@@ -159,11 +159,13 @@ export_bin2r2(std::string& fname, Binary* bin, std::list<DisasmSection>* disasm,
 
       auto jump =
           std::find_if(bb->targets.begin(), bb->targets.end(), [](Edge& e) {
-            return e.type != Edge::EDGE_TYPE_FALLTHROUGH;
+            return e.type != Edge::EDGE_TYPE_FALLTHROUGH &&
+                   e.type != Edge::EDGE_TYPE_DATA;
           });
       auto fall =
           std::find_if(bb->targets.begin(), bb->targets.end(), [](Edge& e) {
-            return e.type == Edge::EDGE_TYPE_FALLTHROUGH;
+            return e.type == Edge::EDGE_TYPE_FALLTHROUGH &&
+                   e.type != Edge::EDGE_TYPE_DATA;
           });
 
       if (jump != bb->targets.end())
@@ -181,6 +183,8 @@ export_bin2r2(std::string& fname, Binary* bin, std::list<DisasmSection>* disasm,
           fprintf(f, "afxC 0x%016jx 0x%016jx\n", ins.address, ins.target);
         else if (ins.flags & Instruction::INS_FLAG_JMP)
           fprintf(f, "afxc 0x%016jx 0x%016jx\n", ins.address, ins.target);
+        else if (ins.flags & Instruction::INS_FLAG_DATA)
+          fprintf(f, "afxd 0x%016jx 0x%016jx\n", ins.address, ins.target);
       }
     }
   }

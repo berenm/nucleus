@@ -36,7 +36,8 @@ bool
 BB::is_called() {
   for (auto& e : ancestors) {
     if ((e.type == Edge::EDGE_TYPE_CALL) ||
-        (e.type == Edge::EDGE_TYPE_CALL_INDIRECT)) {
+        (e.type == Edge::EDGE_TYPE_CALL_INDIRECT) ||
+        (e.type == Edge::EDGE_TYPE_DATA)) {
       return true;
     }
   }

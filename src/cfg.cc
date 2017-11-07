@@ -115,6 +115,7 @@ CFG::analyze_addrtaken_x86() {
 
 void
 CFG::analyze_addrtaken() {
+  BB* bb;
   verbose(1, "starting address-taken analysis");
 
   switch (this->binary->arch) {
@@ -128,6 +129,15 @@ CFG::analyze_addrtaken() {
     print_warn("address-taken analysis not yet supported for %s",
                this->binary->arch_str.c_str());
     break;
+  }
+
+  for (auto& kv : this->start2bb) {
+    bb = kv.second;
+    for (auto& ins : bb->insns) {
+      if ((ins.flags & Instruction::INS_FLAG_DATA) == 0)
+        continue;
+      mark_addrtaken(ins.target);
+    }
   }
 
   verbose(1, "address-taken analysis complete");
@@ -1235,6 +1245,22 @@ CFG::make_cfg(Binary* bin, std::list<DisasmSection>* disasm) {
         /* A block that doesn't have a control flow instruction at the end;
          * this can happen if the next block is a nop block */
         link_bbs(Edge::EDGE_TYPE_FALLTHROUGH, &bb, bb.end);
+      }
+    }
+  }
+
+  /* Link basic blocks by data edges */
+  for (auto& dis : (*disasm)) {
+    for (auto& bb : dis.BBs) {
+      for (auto& ins : bb.insns) {
+        flags = ins.flags;
+        if ((flags & Instruction::INS_FLAG_DATA) &&
+            !(flags & Instruction::INS_FLAG_CALL) &&
+            !(flags & Instruction::INS_FLAG_JMP) &&
+            !(flags & Instruction::INS_FLAG_INDIRECT)) {
+          addr = ins.target;
+          link_bbs(ins.edge_type(), &bb, addr);
+        }
       }
     }
   }

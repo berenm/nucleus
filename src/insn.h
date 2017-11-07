@@ -19,7 +19,8 @@ struct Instruction : cs_insn {
     INS_FLAG_JMP      = 0x008,
     INS_FLAG_CALL     = 0x010,
     INS_FLAG_RET      = 0x020,
-    INS_FLAG_NOP      = 0x040
+    INS_FLAG_NOP      = 0x040,
+    INS_FLAG_DATA     = 0x080,
   };
 
   Instruction()
