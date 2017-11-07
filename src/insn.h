@@ -180,12 +180,4 @@ public:
   bool                 trap;
 };
 
-class X86Instruction : public Instruction {
-public:
-  static const uint8_t MAX_LEN = 16;
-
-  X86Instruction() : Instruction() {}
-  X86Instruction(const X86Instruction& i) : Instruction(i) {}
-};
-
 #endif /* NUCLEUS_INSN_H */
