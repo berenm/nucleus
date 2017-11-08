@@ -59,11 +59,11 @@ public:
   static bool comparator(BB& bb, BB& cc) { return bb.start < cc.start; }
   inline bool operator<(const BB& cc) const { return this->start < cc.start; }
 
-  uint64_t               start;
-  uint64_t               end;
-  std::list<Instruction> insns;
-  Function*              function;
-  Section*               section;
+  uint64_t                 start;
+  uint64_t                 end;
+  std::vector<Instruction> insns;
+  Function*                function;
+  Section*                 section;
 
   double score;
   bool   alive;

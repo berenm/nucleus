@@ -193,7 +193,10 @@ CFG::find_switches_aarch64() {
   scale = -1;
 
   for (auto& kv : this->start2bb) {
-    bb          = kv.second;
+    bb = kv.second;
+    if (bb->insns.empty())
+      continue;
+
     jmptab_addr = 0;
     target_sec  = NULL;
     /* If this BB ends in an indirect jmp, scan the BB for what looks like
@@ -347,7 +350,10 @@ CFG::find_switches_arm() {
   uint32_t* jmptab;
 
   for (auto& kv : this->start2bb) {
-    bb          = kv.second;
+    bb = kv.second;
+    if (bb->insns.empty())
+      continue;
+
     jmptab_addr = 0;
     target_sec  = NULL;
     /* If this BB ends in an indirect jmp, scan the BB for what looks like
@@ -468,7 +474,10 @@ CFG::find_switches_mips() {
   scale = this->binary->bits / 8;
 
   for (auto& kv : this->start2bb) {
-    bb          = kv.second;
+    bb = kv.second;
+    if (bb->insns.empty())
+      continue;
+
     jmptab_addr = 0;
     target_sec  = NULL;
     /* If this BB ends in an indirect jmp, scan the BB for what looks like
@@ -646,7 +655,10 @@ CFG::find_switches_ppc() {
   scale = this->binary->bits / 8;
 
   for (auto& kv : this->start2bb) {
-    bb          = kv.second;
+    bb = kv.second;
+    if (bb->insns.empty())
+      continue;
+
     jmptab_addr = 0;
     target_sec  = NULL;
     /* If this BB ends in an indirect jmp, scan the BB for what looks like
@@ -772,10 +784,13 @@ CFG::find_switches_x86() {
   uint16_t*  jmptab16;
   uint32_t*  jmptab32;
   uint64_t*  jmptab64;
-  std::list<Instruction>::iterator ins;
+  std::vector<Instruction>::iterator ins;
 
   for (auto& kv : this->start2bb) {
-    bb          = kv.second;
+    bb = kv.second;
+    if (bb->insns.empty())
+      continue;
+
     jmptab_addr = 0;
     target_sec  = NULL;
     /* If this BB ends in an indirect jmp, scan the BB for what looks like
@@ -1041,7 +1056,7 @@ CFG::verify_padding() {
       call_fallthrough = false;
       noplen           = (bb->end - bb->start);
       for (auto& e : bb->ancestors) {
-        if ((e.type == Edge::EDGE_TYPE_FALLTHROUGH) &&
+        if ((e.type == Edge::EDGE_TYPE_FALLTHROUGH) && !e.src->insns.empty() &&
             (e.src->insns.back().flags & Instruction::INS_FLAG_CALL)) {
           /* This padding block may not be truly reachable; the preceding
            * call may be non-returning */
@@ -1082,7 +1097,7 @@ CFG::detect_bad_bbs() {
       cc = get_bb(cc->start - 1, &offset);
       if (!cc)
         break;
-      flags = cc->insns.back().flags;
+      flags = cc->insns.empty() ? 0 : cc->insns.back().flags;
       if ((flags & Instruction::INS_FLAG_CFLOW) &&
           (Instruction::INS_FLAG_INDIRECT)) {
         invalid = false;
@@ -1230,6 +1245,9 @@ CFG::make_cfg(Binary* bin, std::list<DisasmSection>* disasm) {
   /* Link basic blocks by direct and fallthrough edges */
   for (auto& dis : (*disasm)) {
     for (auto& bb : dis.BBs) {
+      if (bb.insns.empty())
+        continue;
+
       flags = bb.insns.back().flags;
       if ((flags & Instruction::INS_FLAG_CALL) ||
           (flags & Instruction::INS_FLAG_JMP)) {
