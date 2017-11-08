@@ -10,7 +10,6 @@
 #include <capstone/capstone.h>
 
 #include "bb.h"
-#include "dataregion.h"
 #include "loader.h"
 
 class AddressMap {
@@ -56,10 +55,9 @@ public:
 
   void print_BBs(FILE* out);
 
-  Section*              section;
-  AddressMap            addrmap;
-  std::list<BB>         BBs;
-  std::list<DataRegion> data;
+  Section*      section;
+  AddressMap    addrmap;
+  std::list<BB> BBs;
 
 private:
   void sort_BBs();

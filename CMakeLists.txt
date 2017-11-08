@@ -9,8 +9,6 @@ add_library(nucleus-lib
   src/bb.h
   src/cfg.cc
   src/cfg.h
-  src/dataregion.cc
-  src/dataregion.h
   src/disasm-aarch64.cc
   src/disasm-aarch64.h
   src/disasm-arm.cc
