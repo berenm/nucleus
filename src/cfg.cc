@@ -1171,8 +1171,8 @@ CFG::link_bbs(Edge::EdgeType type, BB* bb, uint64_t target, uint64_t jmptab) {
 
 void
 CFG::unlink_bb(BB* bb) {
-  BB*                       cc;
-  std::list<Edge>::iterator f;
+  BB*                         cc;
+  std::vector<Edge>::iterator f;
 
   for (auto& e : bb->ancestors) {
     cc = e.src;
@@ -1200,7 +1200,7 @@ CFG::unlink_bb(BB* bb) {
 
 void
 CFG::unlink_edge(BB* bb, BB* cc) {
-  std::list<Edge>::iterator f;
+  std::vector<Edge>::iterator f;
 
   for (f = bb->targets.begin(); f != bb->targets.end();) {
     if (f->dst == cc)

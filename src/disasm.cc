@@ -59,20 +59,20 @@ AddressMap::print_regions(FILE* out) {
   }
 }
 
-unsigned
+uint8_t
 AddressMap::get_region_type(uint64_t addr) {
   auto it = std::prev(regions.upper_bound(addr));
   return it->second;
 }
 
 void
-AddressMap::set_region_type(uint64_t addr, unsigned type) {
+AddressMap::set_region_type(uint64_t addr, uint8_t type) {
   auto it    = std::prev(regions.upper_bound(addr));
   it->second = type;
 }
 
 void
-AddressMap::add_region_type(uint64_t addr, uint64_t size, unsigned type) {
+AddressMap::add_region_type(uint64_t addr, uint64_t size, uint8_t type) {
   auto it = regions.upper_bound(addr);
   if (it != regions.end() && it->first < addr + size) {
     add_region_type(addr, it->first - addr, type);
@@ -96,7 +96,7 @@ AddressMap::add_region_type(uint64_t addr, uint64_t size, unsigned type) {
 }
 
 void
-AddressMap::clr_region_type(uint64_t addr, uint64_t size, unsigned type) {
+AddressMap::clr_region_type(uint64_t addr, uint64_t size, uint8_t type) {
   auto it = regions.upper_bound(addr);
   if (it != regions.end() && it->first < addr + size) {
     clr_region_type(addr, it->first - addr, type);

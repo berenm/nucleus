@@ -73,8 +73,8 @@ public:
   bool   padding;
   bool   trap;
 
-  std::list<Edge> ancestors;
-  std::list<Edge> targets;
+  std::vector<Edge> ancestors;
+  std::vector<Edge> targets;
 };
 
 #endif /* NUCLEUS_BB_H */
